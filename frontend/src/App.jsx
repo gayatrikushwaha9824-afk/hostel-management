@@ -1,6 +1,12 @@
-import HostelDashboard from './HostelDashboard';
+import React from 'react';
+import Login from './login';
+
 function App() {
-  return <HostelDashboard />;
+  return (
+    <div>
+      <Login />
+    </div>
+  );
 }
 
 export default App;
