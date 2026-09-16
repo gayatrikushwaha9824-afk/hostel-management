@@ -1,4 +1,4 @@
-import HostelDashboard from './HostelDasboard';
+import HostelDashboard from './HostelDashboard';
 function App() {
   return <HostelDashboard />;
 }
