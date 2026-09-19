@@ -1,42 +1,44 @@
 const express = require('express');
 const router = express.Router();
-const Student = require('../models/student'); // Adjust capitalization to '../models/Student' if your model filename starts with uppercase 'S'
+const Student = require('../models/student'); // Ensure your model file is in backend/models/Student.js
+const verifyToken = require('../authmiddleware'); // Ensure path to authMiddleware is correct
 
-// GET all students (with optional search filtering)
-router.get('/', async (req, res) => {
+// 1. GET ALL STUDENTS (Protected route)
+router.get('/', verifyToken, async (req, res) => {
   try {
-    const { search } = req.query;
-    let query = {};
-    
-    if (search) {
-      query = {
-        $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { roomNumber: { $regex: search, $options: 'i' } }
-        ]
-      };
-    }
-
-    const students = await Student.find(query);
-    res.json(students);
+    const students = await Student.find();
+    res.status(200).json(students);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: 'Error fetching students', error: err.message });
   }
 });
 
-// POST new student record
-router.post('/', async (req, res) => {
+// 2. GET SINGLE STUDENT BY ID
+router.get('/:id', verifyToken, async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+    res.status(200).json(student);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching student', error: err.message });
+  }
+});
+
+// 3. CREATE NEW STUDENT
+router.post('/', verifyToken, async (req, res) => {
   try {
     const newStudent = new Student(req.body);
     const savedStudent = await newStudent.save();
     res.status(201).json(savedStudent);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ message: 'Error adding student', error: err.message });
   }
 });
 
-// PUT update existing student details (or toggle rent status)
-router.put('/:id', async (req, res) => {
+// 4. UPDATE STUDENT BY ID
+router.put('/:id', verifyToken, async (req, res) => {
   try {
     const updatedStudent = await Student.findByIdAndUpdate(
       req.params.id,
@@ -44,41 +46,24 @@ router.put('/:id', async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!updatedStudent) {
-      return res.status(404).json({ error: 'Student not found' });
+      return res.status(404).json({ message: 'Student not found' });
     }
-    res.json(updatedStudent);
+    res.status(200).json(updatedStudent);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ message: 'Error updating student', error: err.message });
   }
 });
 
-// DELETE student record
-router.delete('/:id', async (req, res) => {
+// 5. DELETE STUDENT BY ID
+router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const deletedStudent = await Student.findByIdAndDelete(req.params.id);
     if (!deletedStudent) {
-      return res.status(404).json({ error: 'Student not found' });
+      return res.status(404).json({ message: 'Student not found' });
     }
-    res.json({ message: 'Student record deleted successfully' });
+    res.status(200).json({ message: 'Student deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-// POST new student record with Room Capacity Check
-router.post('/', async (req, res) => {
-  try {
-    const MAX_CAPACITY = 2; // Set max capacity per room
-    const existingCount = await Student.countDocuments({ roomNumber: req.body.roomNumber });
-
-    if (existingCount >= MAX_CAPACITY) {
-      return res.status(400).json({ error: `Room ${req.body.roomNumber} is full! (Max ${MAX_CAPACITY} students)` });
-    }
-
-    const newStudent = new Student(req.body);
-    const savedStudent = await newStudent.save();
-    res.status(201).json(savedStudent);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ message: 'Error deleting student', error: err.message });
   }
 });
 
